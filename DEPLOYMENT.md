@@ -221,6 +221,77 @@ python -m massgen.cli --web
 python -m massgen.cli --web --web-host 0.0.0.0 --web-port 8080
 ```
 
+## Skills Configuration
+
+MassGen supports skills - specialized capabilities that extend agent functionality. Skills are installed via the `openskills` CLI.
+
+### How Skills Are Installed
+
+Skills are installed during the **build phase** using this command in `nixpacks.toml`:
+
+```bash
+HOME=/app npx openskills install anthropics/skills --universal -y || true
+```
+
+**Why this specific approach:**
+
+| Challenge | Solution |
+|-----------|----------|
+| npm global packages not in PATH | Use `npx` to run openskills directly |
+| Skills install to `~/.agent/skills/` | Set `HOME=/app` to install to `/app/.agent/skills/` |
+| Home directory doesn't persist to runtime | Installing to `/app/` ensures persistence |
+| Build shouldn't fail if skills fail | Use `|| true` to continue on error |
+
+### Skills Storage Locations
+
+MassGen looks for skills in these locations (in order):
+
+1. **Built-in**: `massgen/skills/` (8 skills bundled with MassGen)
+2. **User**: `~/.agent/skills/` (home directory - where openskills installs by default)
+3. **Project**: `.agent/skills/` (relative to working directory)
+
+In Railway deployment, we set `HOME=/app` during build so skills install to `/app/.agent/skills/`, which persists because `/app` is the container's working directory.
+
+### Currently Installed Skills
+
+After deployment, the following skills are available:
+
+- **Built-in**: 8 skills (bundled with MassGen)
+- **Anthropic Skills Collection**: 17 skills (code analysis, research, etc.)
+- **Crawl4AI**: 1 skill (web crawling/scraping)
+- **Total**: 26 skills
+
+### Adding More Skills
+
+To add additional skill packages:
+
+1. Add the installation command to `nixpacks.toml`:
+   ```toml
+   [phases.install]
+   cmds = [
+       "uv venv /opt/venv",
+       "uv pip install . --python /opt/venv/bin/python",
+       "HOME=/app npx openskills install anthropics/skills --universal -y || true",
+       "HOME=/app npx openskills install another/skill-package --universal -y || true"
+   ]
+   ```
+
+2. Commit and push to trigger a rebuild
+
+### Enabling Skills in YAML Config
+
+To use skills in your MassGen configuration:
+
+```yaml
+coordination:
+  use_skills: true
+  massgen_skills:
+    - skill_name_1
+    - skill_name_2
+```
+
+See the MassGen documentation for available skill names and configuration options.
+
 ## Architecture Notes
 
 ### Why uv over pip?
