@@ -1,9 +1,8 @@
 [phases.setup]
-nixPkgs = ["python311", "nodejs_20", "curl"]
-cmds = ["curl -LsSf https://astral.sh/uv/install.sh | sh", "export PATH=$HOME/.local/bin:$PATH"]
+nixPkgs = ["python311", "uv", "nodejs_20"]
 
 [phases.install]
-cmds = ["$HOME/.local/bin/uv pip install . --system"]
+cmds = ["uv pip install . --system"]
 
 [start]
 cmd = "python -m massgen.cli --web --web-host 0.0.0.0 --web-port $PORT"
