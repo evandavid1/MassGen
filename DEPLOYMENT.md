@@ -52,23 +52,25 @@ This file configures the Nixpacks build process:
 
 ```toml
 [phases.setup]
-nixPkgs = ["python311", "nodejs_20"]
-cmds = ["pip install uv"]
+nixPkgs = ["python311", "uv", "nodejs_20"]
 
 [phases.install]
-cmds = ["uv pip install . --system"]
+cmds = ["uv venv /opt/venv", "uv pip install . --python /opt/venv/bin/python"]
 
 [start]
-cmd = "python -m massgen.cli --web --web-host 0.0.0.0 --web-port $PORT"
+cmd = "/opt/venv/bin/python -m massgen.cli --web --web-host 0.0.0.0 --web-port $PORT"
 ```
 
 **Key points:**
-- Uses `uv` for fast, reliable dependency installation
+- Uses `uv` as a Nix package for fast, reliable dependency installation
+- Creates virtual environment in `/opt/venv` (not `.venv` - see note below)
 - Installs directly from `pyproject.toml` (no separate requirements.txt needed)
 - Includes Node.js 20 for openskills CLI (npm is bundled with nodejs)
 - Starts the web UI with the correct host/port binding
 
-**Important:** In Nix, `npm` is bundled with `nodejs_20` - do not add `npm` as a separate package.
+**Important notes:**
+- In Nix, `npm` is bundled with `nodejs_20` - do not add `npm` as a separate package
+- **Use `/opt/venv` not `.venv`**: Nixpacks runs `COPY . /app` after the install phase, which overwrites any `.venv` in the project directory. Using `/opt/venv` places the virtual environment outside the app directory where it won't be overwritten.
 
 ### Procfile
 
@@ -108,7 +110,7 @@ Add any other provider keys as needed (GROQ_API_KEY, XAI_API_KEY, etc.)
 3. Go to **Service Settings** > **Deploy**
 4. Verify the **Custom Start Command** is set to:
    ```
-   python -m massgen.cli --web --web-host 0.0.0.0 --web-port $PORT
+   /opt/venv/bin/python -m massgen.cli --web --web-host 0.0.0.0 --web-port $PORT
    ```
 5. Select your preferred **Region** (e.g., EU West)
 
@@ -152,6 +154,19 @@ dependencies = [
     "uvicorn[standard]>=0.27.0",
     ...
 ]
+```
+
+### Dependencies not installed (ModuleNotFoundError at runtime)
+
+**Cause:** The virtual environment was created in `.venv` which gets overwritten by Nixpacks' `COPY . /app` command after installation.
+
+**Fix:** Use `/opt/venv` instead of `.venv` in nixpacks.toml:
+```toml
+[phases.install]
+cmds = ["uv venv /opt/venv", "uv pip install . --python /opt/venv/bin/python"]
+
+[start]
+cmd = "/opt/venv/bin/python -m massgen.cli --web --web-host 0.0.0.0 --web-port $PORT"
 ```
 
 ### Application crashes on startup
