@@ -1,6 +1,6 @@
 [phases.setup]
 nixPkgs = ["python311", "nodejs_20"]
-cmds = ["pip install uv"]
+cmds = ["python -m pip install uv"]
 
 [phases.install]
 cmds = ["uv pip install . --system"]
