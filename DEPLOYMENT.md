@@ -7,9 +7,22 @@ This guide documents how to deploy MassGen to Railway.
 MassGen's web UI is deployed to Railway using Nixpacks for automated builds. The deployment uses:
 
 - **Python 3.11** runtime
+- **Node.js 20** for openskills CLI (Anthropic Skills Collection)
 - **uv** for fast dependency installation from `pyproject.toml`
 - **FastAPI + Uvicorn** for the web server
 - **EU West (Amsterdam)** region
+
+## Git Remotes
+
+This is a fork of the upstream MassGen repository:
+
+- **myfork**: `git@github.com:evandavid1/MassGen.git` - Push changes here
+- **origin**: `https://github.com/massgen/MassGen.git` - Upstream (read-only)
+
+```bash
+# Always push to myfork, not origin
+git push myfork main
+```
 
 ## Prerequisites
 
@@ -39,7 +52,7 @@ This file configures the Nixpacks build process:
 
 ```toml
 [phases.setup]
-nixPkgs = ["python311"]
+nixPkgs = ["python311", "nodejs_20"]
 cmds = ["pip install uv"]
 
 [phases.install]
@@ -52,7 +65,10 @@ cmd = "python -m massgen.cli --web --web-host 0.0.0.0 --web-port $PORT"
 **Key points:**
 - Uses `uv` for fast, reliable dependency installation
 - Installs directly from `pyproject.toml` (no separate requirements.txt needed)
+- Includes Node.js 20 for openskills CLI (npm is bundled with nodejs)
 - Starts the web UI with the correct host/port binding
+
+**Important:** In Nix, `npm` is bundled with `nodejs_20` - do not add `npm` as a separate package.
 
 ### Procfile
 
@@ -85,12 +101,16 @@ Add any other provider keys as needed (GROQ_API_KEY, XAI_API_KEY, etc.)
 
 ### 3. Configure Service Settings
 
-1. Go to **Service Settings** > **Deploy**
-2. Verify the **Custom Start Command** is set to:
+1. Go to **Service Settings** > **Build**
+2. **CRITICAL:** Change **Builder** from "Railpack" to "Nixpacks"
+   - Railpack (default) ignores `nixpacks.toml` and auto-detects Python
+   - Nixpacks properly reads `nixpacks.toml` for custom packages (Node.js, uv, etc.)
+3. Go to **Service Settings** > **Deploy**
+4. Verify the **Custom Start Command** is set to:
    ```
    python -m massgen.cli --web --web-host 0.0.0.0 --web-port $PORT
    ```
-3. Select your preferred **Region** (e.g., EU West)
+5. Select your preferred **Region** (e.g., EU West)
 
 ### 4. Deploy
 
