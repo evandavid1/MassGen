@@ -2,7 +2,7 @@
 nixPkgs = ["python311", "uv", "nodejs_20"]
 
 [phases.install]
-cmds = ["uv pip install . --system"]
+cmds = ["uv venv /app/.venv", "uv pip install . --python /app/.venv/bin/python"]
 
 [start]
-cmd = "python -m massgen.cli --web --web-host 0.0.0.0 --web-port $PORT"
+cmd = "/app/.venv/bin/python -m massgen.cli --web --web-host 0.0.0.0 --web-port $PORT"
