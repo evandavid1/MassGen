@@ -74,11 +74,33 @@ cmd = "/opt/venv/bin/python -m massgen.cli --web --web-host 0.0.0.0 --web-port $
 
 ### Procfile
 
-Fallback process definition:
+Fallback process definition (not used when nixpacks.toml is present):
 
 ```
 web: python -m massgen.cli --web --web-host 0.0.0.0 --web-port $PORT
 ```
+
+## Common Pitfalls (What NOT to Do)
+
+These mistakes were discovered during setup. Avoid repeating them:
+
+| ❌ Don't Do This | ✅ Do This Instead | Why |
+|------------------|-------------------|-----|
+| Use `pip` or `python -m pip` | Use `uv` as a Nix package | Nix Python is "externally managed" and blocks pip installs |
+| Create venv in `.venv` | Create venv in `/opt/venv` | Nixpacks runs `COPY . /app` after install, overwriting `.venv` |
+| Add `npm` to nixPkgs | Only add `nodejs_20` | npm is bundled with nodejs in Nix |
+| Use default "Railpack" builder | Change to "Nixpacks" builder | Railpack ignores `nixpacks.toml` entirely |
+| Use `uv pip install --system` | Use `uv venv` + `uv pip install --python` | Nix has immutable `/nix/store` filesystem |
+| Use `massgen` command directly | Use `python -m massgen.cli` | Entry point scripts may not be in PATH |
+
+### Nix/Nixpacks Constraints
+
+Nixpacks uses Nix under the hood, which has specific constraints:
+
+1. **Immutable filesystem**: The `/nix/store` is read-only. You cannot install packages globally.
+2. **Externally managed Python**: Nix Python blocks `pip install --system` to prevent conflicts.
+3. **Build order**: Nixpacks copies source files AFTER running install commands, so anything in the project directory gets overwritten.
+4. **Package bundling**: Some packages include others (e.g., `nodejs_20` includes `npm`).
 
 ## Deployment Steps
 
