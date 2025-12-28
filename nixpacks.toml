@@ -1,8 +1,9 @@
 [phases.setup]
 nixPkgs = ["python311"]
+cmds = ["pip install uv"]
 
 [phases.install]
-cmds = ["pip install ."]
+cmds = ["uv pip install . --system"]
 
 [start]
 cmd = "python -m massgen.cli --web --web-host 0.0.0.0 --web-port $PORT"
