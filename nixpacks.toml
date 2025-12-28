@@ -2,7 +2,12 @@
 nixPkgs = ["python311", "uv", "nodejs_20"]
 
 [phases.install]
-cmds = ["uv venv /opt/venv", "uv pip install . --python /opt/venv/bin/python"]
+cmds = [
+    "uv venv /opt/venv",
+    "uv pip install . --python /opt/venv/bin/python",
+    "npm install -g openskills",
+    "openskills install anthropics/skills --universal -y || true"
+]
 
 [start]
 cmd = "/opt/venv/bin/python -m massgen.cli --web --web-host 0.0.0.0 --web-port $PORT"
