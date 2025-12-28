@@ -58,8 +58,7 @@ nixPkgs = ["python311", "uv", "nodejs_20"]
 cmds = [
     "uv venv /opt/venv",
     "uv pip install . --python /opt/venv/bin/python",
-    "npm install -g openskills",
-    "openskills install anthropics/skills --universal -y || true"
+    "HOME=/app npx openskills install anthropics/skills --universal -y || true"
 ]
 
 [start]
@@ -71,7 +70,8 @@ cmd = "/opt/venv/bin/python -m massgen.cli --web --web-host 0.0.0.0 --web-port $
 - Creates virtual environment in `/opt/venv` (not `.venv` - see note below)
 - Installs directly from `pyproject.toml` (no separate requirements.txt needed)
 - Includes Node.js 20 for openskills CLI (npm is bundled with nodejs)
-- Installs Anthropic skills during build (npm not reliably available at runtime)
+- Uses `npx` to run openskills (npm global bin not in PATH during build)
+- Sets `HOME=/app` so skills install to `/app/.agent/skills/` which persists to runtime
 - Uses `|| true` so build succeeds even if skills installation fails
 - Starts the web UI with the correct host/port binding
 
@@ -99,7 +99,7 @@ These mistakes were discovered during setup. Avoid repeating them:
 | Use default "Railpack" builder | Change to "Nixpacks" builder | Railpack ignores `nixpacks.toml` entirely |
 | Use `uv pip install --system` | Use `uv venv` + `uv pip install --python` | Nix has immutable `/nix/store` filesystem |
 | Use `massgen` command directly | Use `python -m massgen.cli` | Entry point scripts may not be in PATH |
-| Install npm packages at runtime | Install during build phase | npm/node may not be in PATH or writable at runtime |
+| Install npm packages at runtime | Install during build with `HOME=/app npx` | npm global bin not in PATH; skills must install to /app to persist |
 
 ### Nix/Nixpacks Constraints
 
