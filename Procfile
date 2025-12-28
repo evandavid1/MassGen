@@ -1,1 +1,1 @@
-web: massgen --web --web-host 0.0.0.0 --web-port $PORT
+web: pip install -e . && python -m massgen.cli --web --web-host 0.0.0.0 --web-port $PORT
