@@ -85,6 +85,7 @@ class WebDisplay(BaseDisplay):
             data: Event payload data
         """
         if self._closed:
+            print(f"[WebDisplay DEBUG] _emit SKIPPED (closed): {event_type}", flush=True)
             return
 
         payload = {
@@ -95,16 +96,24 @@ class WebDisplay(BaseDisplay):
             **data,
         }
 
+        # DEBUG: Log emit calls
+        print(f"[WebDisplay DEBUG] _emit called: type={event_type}, seq={payload['sequence']}, has_broadcast={self._broadcast is not None}", flush=True)
+
         # If broadcast function is set, use it
         if self._broadcast is not None:
             try:
                 # Create task to send event asynchronously
-                asyncio.create_task(self._broadcast(payload))
-            except RuntimeError:
+                task = asyncio.create_task(self._broadcast(payload))
+                # Add error handler to catch any exceptions
+                task.add_done_callback(lambda t: print(f"[WebDisplay DEBUG] broadcast task done for {event_type}, exception={t.exception()}", flush=True) if t.exception() else None)
+                print(f"[WebDisplay DEBUG] Created broadcast task for {event_type}", flush=True)
+            except RuntimeError as e:
                 # No event loop running - queue the event instead
+                print(f"[WebDisplay DEBUG] RuntimeError creating task: {e}, queuing instead", flush=True)
                 self._event_queue.put_nowait(payload)
         else:
             # Queue for later consumption (testing/standalone mode)
+            print(f"[WebDisplay DEBUG] No broadcast function, queuing {event_type}", flush=True)
             self._event_queue.put_nowait(payload)
 
     def _setup_agent_output_files(self) -> None:
@@ -213,8 +222,16 @@ class WebDisplay(BaseDisplay):
             content: Content to append
             content_type: Type of content ("thinking", "tool", "status")
         """
+        # DEBUG: Log all calls to update_agent_content
+        import sys
+        print(f"[WebDisplay DEBUG] update_agent_content called: agent_id='{agent_id}', content_type='{content_type}', content_len={len(content)}", flush=True)
+        print(f"[WebDisplay DEBUG] self.agent_ids = {self.agent_ids}", flush=True)
+
         if agent_id not in self.agent_ids:
+            print(f"[WebDisplay DEBUG] SKIPPING - agent_id '{agent_id}' not in agent_ids!", flush=True)
             return
+
+        print(f"[WebDisplay DEBUG] EMITTING agent_content event for {agent_id}", flush=True)
 
         # Track content in parent class
         self.agent_outputs.setdefault(agent_id, []).append(content)
