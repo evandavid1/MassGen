@@ -4217,6 +4217,9 @@ Your answer:"""
                         if tool_name == "vote":
                             # Log which agents we are choosing from
                             logger.info(f"[Orchestrator] Agent {agent_id} voting from options: {list(answers.keys()) if answers else 'No answers available'}")
+                            # Mark vote as workflow tool BEFORE any early exits
+                            # This prevents false "needs to use workflow tools" enforcement
+                            workflow_tool_found = True
                             # Check if agent should restart - votes invalid during restart
                             if self._check_restart_pending(agent_id):
                                 should_continue = await self._inject_update_and_continue(
@@ -4228,8 +4231,6 @@ Your answer:"""
                                     yield ("content", f"📨 [{agent_id}] receiving update with new answers\n")
                                     continue  # Agent continues working with update
                                 # else: No new answers, proceed with normal error handling
-
-                            workflow_tool_found = True
                             # Vote for existing answer (requires existing answers)
                             if not answers:
                                 # Invalid - can't vote when no answers exist

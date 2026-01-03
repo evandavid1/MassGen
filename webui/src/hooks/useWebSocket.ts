@@ -88,6 +88,7 @@ export function useWebSocket({
 
       ws.onopen = () => {
         setStatus('connected');
+        setError(null); // Clear any stale error on successful connection
         const wasReconnect = reconnectCountRef.current > 0;
         reconnectCountRef.current = 0;
         console.log('WebSocket connected');
