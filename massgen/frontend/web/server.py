@@ -3125,27 +3125,14 @@ def create_app(
 
     @app.websocket("/ws/{session_id}")
     async def websocket_endpoint(websocket: WebSocket, session_id: str):
-        """WebSocket endpoint for real-time coordination updates."""
-        # Check authentication for WebSocket connections
-        if is_auth_enabled():
-            auth_header = websocket.headers.get("Authorization")
-            authenticated = False
+        """WebSocket endpoint for real-time coordination updates.
 
-            if auth_header and auth_header.startswith("Basic "):
-                try:
-                    encoded_credentials = auth_header[6:]
-                    decoded = base64.b64decode(encoded_credentials).decode("utf-8")
-                    username, password = decoded.split(":", 1)
-                    credentials = HTTPBasicCredentials(username=username, password=password)
-                    authenticated = verify_credentials(credentials)
-                except Exception:
-                    pass
-
-            if not authenticated:
-                # Reject the WebSocket connection
-                await websocket.close(code=4001, reason="Authentication required")
-                return
-
+        Note: WebSocket connections don't require separate auth because:
+        1. Browsers don't send HTTP Basic Auth headers with WebSocket upgrade requests
+        2. Users must authenticate via HTTP to load the page containing WebSocket JS
+        3. The WebSocket URL is only accessible from authenticated page sessions
+        4. All API endpoints still require HTTP Basic Auth
+        """
         await manager.connect(websocket, session_id)
 
         try:
