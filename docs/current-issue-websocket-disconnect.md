@@ -139,7 +139,7 @@ print(f"[Server] broadcast {msg_type} to {num_clients} client(s)", flush=True)
 
 - `98e16530` - Add WebSocket keepalive to prevent Railway proxy timeout
 - `96ce15d5` - Fix WebSocket disconnect and state recovery
-- `(pending)` - Fix React 18 batching causing UI to not update
+- `a3731b3b` - Fix React 18 batching causing UI to not update
 
 ---
 
