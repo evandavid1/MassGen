@@ -6,6 +6,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { useAgentStore } from '../stores/agentStore';
 import type { WSEvent } from '../types';
 
@@ -57,11 +58,15 @@ export function useWebSocket({
   }, [sessionId]);
 
   // Handle incoming messages
+  // Use flushSync to force immediate React re-renders on WebSocket events
+  // This prevents React 18's automatic batching from delaying UI updates
   const handleMessage = useCallback(
     (event: MessageEvent) => {
       try {
         const data: WSEvent = JSON.parse(event.data);
-        processWSEvent(data);
+        flushSync(() => {
+          processWSEvent(data);
+        });
       } catch (err) {
         console.error('Failed to parse WebSocket message:', err);
       }
