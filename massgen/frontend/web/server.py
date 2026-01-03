@@ -3355,8 +3355,11 @@ def create_app(
 
         @app.get("/")
         async def serve_index():
-            """Serve React app index.html."""
-            return FileResponse(static_dir / "index.html")
+            """Serve React app index.html with no-cache to ensure fresh bundles."""
+            return FileResponse(
+                static_dir / "index.html",
+                headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
+            )
 
         @app.get("/{path:path}")
         async def serve_spa(path: str):
@@ -3375,7 +3378,11 @@ def create_app(
             file_path = static_dir / path
             if file_path.exists() and file_path.is_file():
                 return FileResponse(file_path)
-            return FileResponse(static_dir / "index.html")
+            # Return index.html with no-cache for SPA routing
+            return FileResponse(
+                static_dir / "index.html",
+                headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
+            )
 
     return app
 
