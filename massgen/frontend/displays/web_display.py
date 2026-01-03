@@ -213,7 +213,11 @@ class WebDisplay(BaseDisplay):
             content: Content to append
             content_type: Type of content ("thinking", "tool", "status")
         """
+        # DEBUG: Trace streaming issues
+        print(f"[WebDisplay] update_agent_content: agent={agent_id}, type={content_type}, len={len(content)}", flush=True)
+
         if agent_id not in self.agent_ids:
+            print(f"[WebDisplay] SKIP: {agent_id} not in {self.agent_ids}", flush=True)
             return
 
         # Track content in parent class

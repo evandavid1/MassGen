@@ -149,14 +149,21 @@ class ConnectionManager:
 
     async def broadcast(self, session_id: str, message: Dict[str, Any]) -> None:
         """Broadcast message to all clients in a session."""
+        msg_type = message.get("type", "unknown")
+
         if session_id not in self.active_connections:
+            print(f"[Server] broadcast {msg_type}: NO CONNECTIONS for {session_id}", flush=True)
             return
+
+        num_clients = len(self.active_connections[session_id])
+        print(f"[Server] broadcast {msg_type} to {num_clients} client(s)", flush=True)
 
         disconnected = set()
         for websocket in self.active_connections[session_id]:
             try:
                 await websocket.send_json(message)
-            except Exception:
+            except Exception as e:
+                print(f"[Server] broadcast FAILED: {e}", flush=True)
                 disconnected.add(websocket)
 
         # Clean up disconnected clients
