@@ -131,6 +131,26 @@ OPENAI_API_KEY=sk-...
 
 Add any other provider keys as needed (GROQ_API_KEY, XAI_API_KEY, etc.)
 
+#### Authentication (Required for Public Deployments)
+
+**IMPORTANT:** If your Railway deployment has a public URL, you MUST enable HTTP Basic Auth to prevent unauthorized access to your API keys.
+
+Add these environment variables in Railway:
+
+```
+MASSGEN_AUTH_USERNAME=your_username
+MASSGEN_AUTH_PASSWORD=your_secure_password
+```
+
+When both variables are set:
+- All HTTP endpoints require authentication
+- WebSocket connections require authentication
+- Browsers will show a login prompt before accessing the UI
+
+When either variable is missing or empty:
+- Authentication is disabled (for local development)
+- Anyone with the URL can access the UI and use your API keys
+
 ### 3. Configure Service Settings
 
 1. Go to **Service Settings** > **Build**

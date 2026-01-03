@@ -15,10 +15,14 @@ import uuid
 from pathlib import Path
 from typing import Any, Dict, Optional, Set
 
+import os
+import secrets
+
 try:
-    from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
+    from fastapi import Depends, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect, status
     from fastapi.middleware.cors import CORSMiddleware
-    from fastapi.responses import FileResponse, JSONResponse
+    from fastapi.responses import FileResponse, JSONResponse, Response
+    from fastapi.security import HTTPBasic, HTTPBasicCredentials
     from fastapi.staticfiles import StaticFiles
 
     FASTAPI_AVAILABLE = True
@@ -26,6 +30,70 @@ except ImportError:
     FASTAPI_AVAILABLE = False
 
 from massgen.frontend.displays.web_display import WebDisplay
+
+# =============================================================================
+# HTTP Basic Authentication
+# =============================================================================
+
+# Initialize HTTP Basic security scheme
+security = HTTPBasic(auto_error=False)
+
+
+def get_auth_credentials() -> tuple[Optional[str], Optional[str]]:
+    """Get authentication credentials from environment variables.
+
+    Returns:
+        Tuple of (username, password) or (None, None) if auth is disabled.
+    """
+    username = os.environ.get("MASSGEN_AUTH_USERNAME")
+    password = os.environ.get("MASSGEN_AUTH_PASSWORD")
+    return username, password
+
+
+def is_auth_enabled() -> bool:
+    """Check if authentication is enabled (both username and password are set)."""
+    username, password = get_auth_credentials()
+    return bool(username and password)
+
+
+def verify_credentials(credentials: Optional[HTTPBasicCredentials]) -> bool:
+    """Verify the provided credentials against environment variables.
+
+    Uses constant-time comparison to prevent timing attacks.
+    """
+    if not is_auth_enabled():
+        return True  # Auth disabled, allow access
+
+    if credentials is None:
+        return False
+
+    expected_username, expected_password = get_auth_credentials()
+
+    # Use secrets.compare_digest for constant-time comparison (prevents timing attacks)
+    username_correct = secrets.compare_digest(
+        credentials.username.encode("utf-8"),
+        expected_username.encode("utf-8")
+    )
+    password_correct = secrets.compare_digest(
+        credentials.password.encode("utf-8"),
+        expected_password.encode("utf-8")
+    )
+
+    return username_correct and password_correct
+
+
+async def require_auth(credentials: Optional[HTTPBasicCredentials] = Depends(security)):
+    """Dependency that requires valid authentication.
+
+    Raises HTTPException with 401 if auth is enabled and credentials are invalid.
+    """
+    if not verify_credentials(credentials):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials",
+            headers={"WWW-Authenticate": "Basic realm='MassGen'"},
+        )
+    return credentials
 
 
 class ConnectionManager:
@@ -173,6 +241,45 @@ def create_app(
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # =========================================================================
+    # HTTP Basic Auth Middleware
+    # =========================================================================
+
+    @app.middleware("http")
+    async def auth_middleware(request: Request, call_next):
+        """Middleware to enforce HTTP Basic Auth on all routes.
+
+        Auth is only enforced if MASSGEN_AUTH_USERNAME and MASSGEN_AUTH_PASSWORD
+        environment variables are both set. If not set, auth is disabled.
+        """
+        # Skip auth if not enabled
+        if not is_auth_enabled():
+            return await call_next(request)
+
+        # Check for Authorization header
+        auth_header = request.headers.get("Authorization")
+
+        if auth_header and auth_header.startswith("Basic "):
+            try:
+                # Decode base64 credentials
+                encoded_credentials = auth_header[6:]  # Remove "Basic " prefix
+                decoded = base64.b64decode(encoded_credentials).decode("utf-8")
+                username, password = decoded.split(":", 1)
+
+                # Create credentials object and verify
+                credentials = HTTPBasicCredentials(username=username, password=password)
+                if verify_credentials(credentials):
+                    return await call_next(request)
+            except Exception:
+                pass  # Invalid auth header format, fall through to 401
+
+        # No valid auth - return 401
+        return Response(
+            content="Authentication required",
+            status_code=401,
+            headers={"WWW-Authenticate": "Basic realm='MassGen'"},
+        )
 
     # =========================================================================
     # API Routes
@@ -3019,6 +3126,26 @@ def create_app(
     @app.websocket("/ws/{session_id}")
     async def websocket_endpoint(websocket: WebSocket, session_id: str):
         """WebSocket endpoint for real-time coordination updates."""
+        # Check authentication for WebSocket connections
+        if is_auth_enabled():
+            auth_header = websocket.headers.get("Authorization")
+            authenticated = False
+
+            if auth_header and auth_header.startswith("Basic "):
+                try:
+                    encoded_credentials = auth_header[6:]
+                    decoded = base64.b64decode(encoded_credentials).decode("utf-8")
+                    username, password = decoded.split(":", 1)
+                    credentials = HTTPBasicCredentials(username=username, password=password)
+                    authenticated = verify_credentials(credentials)
+                except Exception:
+                    pass
+
+            if not authenticated:
+                # Reject the WebSocket connection
+                await websocket.close(code=4001, reason="Authentication required")
+                return
+
         await manager.connect(websocket, session_id)
 
         try:
