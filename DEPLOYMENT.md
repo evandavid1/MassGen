@@ -292,6 +292,53 @@ coordination:
 
 See the MassGen documentation for available skill names and configuration options.
 
+## Docker on Railway (Not Supported)
+
+**Important:** Railway does not support Docker-in-Docker. You cannot run Docker containers inside Railway's environment.
+
+### What This Means
+
+- The `/setup` page Docker step will show Docker as unavailable
+- This is expected behavior - skip the Docker setup step
+- MassGen will use **local execution mode** instead
+
+### Code Execution Alternatives
+
+1. **Local Execution Mode** (default on Railway):
+   ```yaml
+   agents:
+     - backend:
+         enable_mcp_command_line: true
+         command_line_execution_mode: "local"  # Runs in Railway container
+   ```
+
+2. **Provider Cloud Sandboxes** (recommended for code execution):
+   ```yaml
+   agents:
+     - backend:
+         type: "openai"
+         model: "gpt-5-nano"
+         enable_code_interpreter: true  # Runs in OpenAI's cloud
+   ```
+
+3. **Claude's Built-in Tools**:
+   ```yaml
+   agents:
+     - backend:
+         type: "claude"
+         model: "claude-sonnet-4-5-20250929"
+         enable_code_execution: true  # Runs in Anthropic's cloud
+   ```
+
+### Security Considerations
+
+Local execution mode on Railway is less isolated than Docker but is generally safe because:
+- Railway containers are ephemeral (destroyed after each deployment)
+- MassGen still applies command sanitization and path restrictions
+- Agents cannot escape the container filesystem
+
+---
+
 ## Architecture Notes
 
 ### Why uv over pip?
