@@ -41,6 +41,10 @@ export function useWebSocket({
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectCountRef = useRef(0);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Keepalive interval (15 seconds) - prevents Railway proxy timeout
+  const PING_INTERVAL = 15000;
 
   const processWSEvent = useAgentStore((state) => state.processWSEvent);
 
@@ -80,6 +84,16 @@ export function useWebSocket({
         setStatus('connected');
         reconnectCountRef.current = 0;
         console.log('WebSocket connected');
+
+        // Start keepalive pings to prevent proxy timeout
+        if (pingIntervalRef.current) {
+          clearInterval(pingIntervalRef.current);
+        }
+        pingIntervalRef.current = setInterval(() => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ action: 'ping' }));
+          }
+        }, PING_INTERVAL);
       };
 
       ws.onmessage = handleMessage;
@@ -87,6 +101,12 @@ export function useWebSocket({
       ws.onclose = (event) => {
         setStatus('disconnected');
         console.log('WebSocket disconnected:', event.code, event.reason);
+
+        // Stop keepalive pings
+        if (pingIntervalRef.current) {
+          clearInterval(pingIntervalRef.current);
+          pingIntervalRef.current = null;
+        }
 
         // Auto-reconnect if not intentionally closed
         if (event.code !== 1000 && reconnectCountRef.current < reconnectAttempts) {
@@ -120,6 +140,12 @@ export function useWebSocket({
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
       reconnectTimeoutRef.current = null;
+    }
+
+    // Stop keepalive pings
+    if (pingIntervalRef.current) {
+      clearInterval(pingIntervalRef.current);
+      pingIntervalRef.current = null;
     }
 
     if (wsRef.current) {

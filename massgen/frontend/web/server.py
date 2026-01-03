@@ -3319,6 +3319,10 @@ def create_app(
                             },
                         )
 
+                elif action == "ping":
+                    # Keepalive ping - respond with pong to prevent proxy timeout
+                    await websocket.send_json({"type": "pong"})
+
         except WebSocketDisconnect:
             manager.disconnect(websocket, session_id)
         except Exception as e:
